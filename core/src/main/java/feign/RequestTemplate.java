@@ -172,6 +172,13 @@ public final class RequestTemplate implements Serializable {
     this.feignTarget = toCopy.feignTarget;
   }
 
+  void resolveContentType(Map<String, ?> variables) {
+    HeaderTemplate contentType = this.headers.get("Content-Type");
+    if (contentType != null) {
+      this.headerLiteral("Content-Type", contentType.expand(variables));
+    }
+  }
+
   /**
    * Resolve all expressions using the variable value substitutions provided. Variable values will
    * be pct-encoded, if they are not already.

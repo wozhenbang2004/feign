@@ -105,6 +105,15 @@ final class RequestTemplateFactoryResolver {
         }
       }
 
+      // Content-Type selects the encoded representation and may gain a multipart boundary.
+      mutable.resolveContentType(varBuilder);
+      Map<String, Object> headerMap = null;
+      if (metadata.headerMapIndex() != null) {
+        Object value = argv[metadata.headerMapIndex()];
+        headerMap = toQueryMap(value, metadata.queryMapEncoder());
+        mutable = addHeaderMapHeaders(headerMap, mutable, true);
+      }
+
       RequestTemplate template = resolve(argv, mutable, varBuilder);
       if (metadata.queryMapIndex() != null) {
         // add query map parameters after initial resolve so that they take
@@ -114,11 +123,8 @@ final class RequestTemplateFactoryResolver {
         template = addQueryMapQueryParameters(queryMap, template);
       }
 
-      if (metadata.headerMapIndex() != null) {
-        // add header map parameters for a resolution of the user pojo object
-        Object value = argv[metadata.headerMapIndex()];
-        Map<String, Object> headerMap = toQueryMap(value, metadata.queryMapEncoder());
-        template = addHeaderMapHeaders(headerMap, template);
+      if (headerMap != null) {
+        template = addHeaderMapHeaders(headerMap, template, false);
       }
 
       return template;
@@ -157,8 +163,12 @@ final class RequestTemplateFactoryResolver {
 
     @SuppressWarnings("unchecked")
     private RequestTemplate addHeaderMapHeaders(
-        Map<String, Object> headerMap, RequestTemplate mutable) {
+        Map<String, Object> headerMap, RequestTemplate mutable, boolean contentTypeOnly) {
       for (Map.Entry<String, Object> currEntry : headerMap.entrySet()) {
+        boolean contentType = "Content-Type".equalsIgnoreCase(currEntry.getKey());
+        if (contentType != contentTypeOnly) {
+          continue;
+        }
         Collection<String> values = new ArrayList<String>();
 
         Object currValue = currEntry.getValue();
@@ -173,7 +183,7 @@ final class RequestTemplateFactoryResolver {
         }
 
         /* runtime @HeaderMap values are literals, not URI template expressions */
-        mutable.headerLiteral(currEntry.getKey(), values);
+        mutable.headerLiteral(contentType ? "Content-Type" : currEntry.getKey(), values);
       }
       return mutable;
     }
